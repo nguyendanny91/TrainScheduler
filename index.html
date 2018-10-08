@@ -1,0 +1,217 @@
+<!DOCTYPE html>
+
+<html lang="en-us">
+
+<head>
+
+  <meta charset="UTF-8">
+  <title>Train Manager</title>
+
+  <!-- Bootstrap -->
+  <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/4.0.0/css/bootstrap.min.css">
+
+  <!-- LINK TO FIREBASE GOES HERE -->
+  <script src="https://www.gstatic.com/firebasejs/5.5.3/firebase.js"></script>
+
+    <!-- Link to Moment.js should go here -->
+    <script src="https://cdn.jsdelivr.net/momentjs/2.12.0/moment.min.js"></script>
+
+
+</head>
+
+<body>
+
+  <div class="container">
+
+    <br>
+
+    <!-- Jumbotron -->
+    <div class="jumbotron">
+      <h1 class="text-center">Anytime is Train Time!</h1>
+      <p class="lead text-center">Choo Choo! Woo Woo!</p>
+    </div>
+
+    <div class="row">
+
+      <!-- Current Train Time -->
+      <div class="col-lg-12">
+        <div class="card card-default">
+          <div class="card-header">
+            Current Train Time
+          </div>
+          <div class="card-body">
+
+            <!-- Display Trains-->
+            <table class="table table-hover">
+            <thead>
+                <tr>
+                <th scope="col">#</th>
+                <th scope="col">Train Name</th>
+                <th scope="col">Destination</th>
+                <th scope="col">Frequency (min)</th>
+                <th scope="col">Next Arrival</th>
+                <th scope="col">Minutes Away</th>
+                </tr>
+            </thead>
+            <tbody class="add-records">
+            </tbody>
+            </table>
+            
+
+          </div>
+
+        </div>
+
+      </div>
+    </div>
+
+    <br><br>
+
+    <div class="row">
+
+      <!-- Add New Train -->
+      <div class="col-lg-12">
+        <div class="card card-default">
+          <div class="card-header">
+            Add Train
+          </div>
+          <div class="card-body">
+
+            <!-- Sign-up Form (note the various input "types")-->
+
+            <form id="registerform" role="form">
+              <div class="form-group row">
+                <label for="train-name-input">Train Name</label>
+                <input class="form-control required" id="train-name-input" type="text" name="train_name">
+              </div>
+              <div class="form-group row">
+                <label for="destination-input">Destination</label>
+                <input class="form-control required" id="destination-input" type="text">
+              </div>
+              <div class="form-group row">
+                <label for="first-train-time-input">First Train Time (HH:mm - military time)</label>
+                <input class="form-control required" id="first-train-time-input" type="text">
+              </div>
+              <div class="form-group row">
+                <label for="frequency-input">Frequency (min)</label>
+                <input class="form-control required" id="frequency-input" type="number">
+              </div>
+              <button class="btn btn-default" id="add-train" type="submit">Submit</button>
+            </form>
+
+          </div>
+
+        </div>
+
+      </div>
+    </div>
+
+  </div>
+
+  <!-- jQuery -->
+  <script src="https://code.jquery.com/jquery.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery-validate/1.17.0/jquery.validate.min.js"></script>
+
+  <!-- Script -->
+  <script>
+
+    // Initialize Firebase
+    var config = {
+    apiKey: "AIzaSyC-6gjP4AIDc1ZzXC_lhKyz7PV7p21c2oE",
+    authDomain: "trainscheduler-d5154.firebaseapp.com",
+    databaseURL: "https://trainscheduler-d5154.firebaseio.com",
+    projectId: "trainscheduler-d5154",
+    storageBucket: "",
+    messagingSenderId: "939337130409"
+    };
+
+    firebase.initializeApp(config);
+
+    // Create a variable to reference the database.
+    var database = firebase.database();
+
+    // Initial Values
+    var trainName = "";
+    var Destination = "";
+    var firstTrainTime = 0;
+    var Frequency = "";
+    var rownum = 0
+
+    // Capture Button Click
+    $("#add-train").on("click", function(event) {
+
+      event.preventDefault();
+
+
+      // Increment rownum
+      rownum ++;
+
+      // Grabbed values from text boxes
+      trainName = $("#train-name-input").val().trim();
+      Destination = $("#destination-input").val().trim();
+      firstTrainTime = $("#first-train-time-input").val().trim();
+      var convertfirstTrainTime = moment(firstTrainTime,"HH:mm");
+      var convertfirstTrainTimeX = convertfirstTrainTime.format("X");
+        console.log(convertfirstTrainTimeX)
+
+      Frequency = $("#frequency-input").val().trim();
+
+      // Code for handling the push
+      database.ref().push({
+        fb_trainName: trainName,
+        fb_Destination: Destination,
+        fb_convertfirstTrainTimeX: convertfirstTrainTimeX,
+        fb_Frequency: Frequency,
+        fb_dateAdded: firebase.database.ServerValue.TIMESTAMP,
+        fb_rownum: rownum
+      });
+
+      //Clear text on submission
+      $("#train-name-input").val("");
+      $("#destination-input").val("");
+      $("#first-train-time-input").val("");
+      $("#frequency-input").val("");
+
+    });
+
+    // Firebase watcher .on("child_added"
+    database.ref().on("child_added", function(snapshot) {
+      // storing the snapshot.val() in a variable for convenience
+      var sv = snapshot.val();
+
+      rownum = sv.fb_rownum;
+
+
+
+
+      // Console.loging the last user's data
+
+      // Change the HTML to reflect
+      $(".add-records").append( 
+        "<tr>" +
+        "<th class='rowcount' scope='row'>" +
+        sv.fb_rownum +
+        "</th>" + 
+        "<td>" + sv.fb_trainName + "</td>" +
+        "<td>" + sv.fb_Destination + "</td>" +
+        "<td>" + sv.fb_Frequency + "</td>" +
+        // next train time
+        "<td>" + (moment(moment().add((sv.fb_Frequency - ((moment().diff(moment(moment(sv.fb_convertfirstTrainTimeX, "X").subtract(1, "years")), "minutes")) % sv.fb_Frequency)), "minutes")).format("HH:mm")) + "</td>" +
+        // minutes for next train
+        "<td>" + (sv.fb_Frequency - ((moment().diff(moment(moment(sv.fb_convertfirstTrainTimeX, "X").subtract(1, "years")), "minutes")) % sv.fb_Frequency)) + "</td>" +
+        "</tr>");
+
+      // Handle the errors
+    }, function(errorObject) {
+      console.log("Errors handled: " + errorObject.code);
+    });
+
+  </script>
+
+</body>
+
+</html>
+
+
+
+
