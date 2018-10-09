@@ -51,6 +51,7 @@
                 <th scope="col">Frequency (min)</th>
                 <th scope="col">Next Arrival</th>
                 <th scope="col">Minutes Away</th>
+                <th scope="col">Remove Record</th>
                 </tr>
             </thead>
             <tbody class="add-records">
@@ -82,19 +83,19 @@
             <form id="registerform" role="form">
               <div class="form-group row">
                 <label for="train-name-input">Train Name</label>
-                <input class="form-control required" id="train-name-input" type="text" name="train_name">
+                <input class="form-control" id="train-name-input" type="text" name="train_name">
               </div>
               <div class="form-group row">
                 <label for="destination-input">Destination</label>
-                <input class="form-control required" id="destination-input" type="text">
+                <input class="form-control" id="destination-input" type="text">
               </div>
               <div class="form-group row">
                 <label for="first-train-time-input">First Train Time (HH:mm - military time)</label>
-                <input class="form-control required" id="first-train-time-input" type="text">
+                <input class="form-control" id="first-train-time-input" type="text">
               </div>
               <div class="form-group row">
                 <label for="frequency-input">Frequency (min)</label>
-                <input class="form-control required" id="frequency-input" type="number">
+                <input class="form-control" id="frequency-input" type="number">
               </div>
               <button class="btn btn-default" id="add-train" type="submit">Submit</button>
             </form>
@@ -110,8 +111,7 @@
 
   <!-- jQuery -->
   <script src="https://code.jquery.com/jquery.js"></script>
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery-validate/1.17.0/jquery.validate.min.js"></script>
-
+ 
   <!-- Script -->
   <script>
 
@@ -130,16 +130,18 @@
     // Create a variable to reference the database.
     var database = firebase.database();
 
+
+    
     // Initial Values
     var trainName = "";
     var Destination = "";
     var firstTrainTime = 0;
     var Frequency = "";
     var rownum = 0
-
+    var row_val;
+    
     // Capture Button Click
     $("#add-train").on("click", function(event) {
-
       event.preventDefault();
 
 
@@ -152,12 +154,10 @@
       firstTrainTime = $("#first-train-time-input").val().trim();
       var convertfirstTrainTime = moment(firstTrainTime,"HH:mm");
       var convertfirstTrainTimeX = convertfirstTrainTime.format("X");
-        console.log(convertfirstTrainTimeX)
-
       Frequency = $("#frequency-input").val().trim();
 
       // Code for handling the push
-      database.ref().push({
+      database.ref('/trainschedule').push({
         fb_trainName: trainName,
         fb_Destination: Destination,
         fb_convertfirstTrainTimeX: convertfirstTrainTimeX,
@@ -175,7 +175,7 @@
     });
 
     // Firebase watcher .on("child_added"
-    database.ref().on("child_added", function(snapshot) {
+    database.ref('/trainschedule').on("child_added", function(snapshot) {
       // storing the snapshot.val() in a variable for convenience
       var sv = snapshot.val();
 
@@ -188,7 +188,7 @@
 
       // Change the HTML to reflect
       $(".add-records").append( 
-        "<tr>" +
+        "<tr class='remove-tr'>" +
         "<th class='rowcount' scope='row'>" +
         sv.fb_rownum +
         "</th>" + 
@@ -199,12 +199,35 @@
         "<td>" + (moment(moment().add((sv.fb_Frequency - ((moment().diff(moment(moment(sv.fb_convertfirstTrainTimeX, "X").subtract(1, "years")), "minutes")) % sv.fb_Frequency)), "minutes")).format("HH:mm")) + "</td>" +
         // minutes for next train
         "<td>" + (sv.fb_Frequency - ((moment().diff(moment(moment(sv.fb_convertfirstTrainTimeX, "X").subtract(1, "years")), "minutes")) % sv.fb_Frequency)) + "</td>" +
+        "<td>" + "<button row_val='" + sv.fb_rownum + "' class='btn btn-primary remove-record'>Remove</button" +"</td>" +
         "</tr>");
 
       // Handle the errors
     }, function(errorObject) {
       console.log("Errors handled: " + errorObject.code);
     });
+
+    $(document).on('click','.remove-record',function(){
+
+      // removes from database
+
+      var row_val = $(this).attr('row_val')
+
+      row_val = parseInt(row_val)
+
+      var abc = firebase.database().ref('/trainschedule');
+      var key_to_delete = row_val;
+      var query = abc.orderByChild('fb_rownum').equalTo(key_to_delete);
+      query.on('child_added', function(snapshot)
+      {
+          snapshot.ref.remove();
+      });
+
+      // removes row from front end
+      $(this).closest('.remove-tr').remove()
+
+    })
+
 
   </script>
 
